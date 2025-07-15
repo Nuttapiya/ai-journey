@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smile Journey Estimator - ประเมินระยะเวลาจัดฟัน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .active-screen {
+            display: flex;
+        }
+        .option-card {
+            transition: all 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .option-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        .option-card.selected {
+            border-color: #06b6d4; /* cyan-500 */
+            background-color: #cffafe; /* cyan-50 */
+            box-shadow: 0 0 0 2px #06b6d4;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app-container" class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl p-6 md:p-8">
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="screen active-screen flex-col text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-cyan-600 mb-2">Smile Journey Estimator</h1>
+            <h2 class="text-lg md:text-xl font-medium text-slate-700 mb-4">อยากรู้ไหม? ต้องมาหาหมอฟันกี่ครั้ง</h2>
+            <p class="text-slate-600 mb-6">ตอบคำถามเพียงไม่กี่ข้อ เพื่อประเมินจำนวนครั้งในการจัดฟันเบื้องต้น!</p>
+            <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-lg mb-6 text-left">
+                <p class="font-bold">ข้อจำกัดความรับผิดชอบ (Disclaimer)</p>
+                <p class="text-sm">ผลลัพธ์เป็นเพียงการประมาณการเบื้องต้นเท่านั้น แผนการรักษาที่แม่นยำต้องมาจากการตรวจและวินิจฉัยโดยทันตแพทย์ที่คลินิก</p>
+            </div>
+            <button onclick="startQuiz()" class="w-full bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-colors duration-300 shadow-md">
+                เริ่มต้นประเมิน
+            </button>
+        </div>
+
+        <!-- Question Screen -->
+        <div id="question-screen" class="screen flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <button id="back-button" onclick="goBack()" class="text-slate-500 hover:text-slate-800">&larr; ย้อนกลับ</button>
+                <div class="w-full bg-slate-200 rounded-full h-2.5 mx-4">
+                    <div id="progress-indicator" class="bg-cyan-500 h-2.5 rounded-full transition-all duration-300" style="width: 0%;"></div>
+                </div>
+            </div>
+            <h2 id="question-text" class="text-xl font-bold text-slate-800 mb-2 text-center"></h2>
+            <p id="question-subtitle" class="text-sm text-slate-500 mb-6 text-center"></p>
+            <div id="answer-options" class="grid grid-cols-1 gap-4">
+                <!-- Answer options will be populated by JS -->
+            </div>
+            <button id="next-button" onclick="submitCheckboxAnswer()" class="hidden w-full mt-6 bg-cyan-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-cyan-600 transition-colors duration-300 shadow-md">
+                ต่อไป
+            </button>
+            <p class="text-xs text-slate-400 mt-8 text-center">
+                *เป็นการประเมินเบื้องต้นเท่านั้น โปรดปรึกษาทันตแพทย์เพื่อผลที่แม่นยำ
+            </p>
+        </div>
+
+        <!-- Results Screen -->
+        <div id="results-screen" class="screen flex-col text-center">
+             <div id="loading-spinner" class="flex flex-col items-center justify-center">
+                <svg class="animate-spin -ml-1 mr-3 h-10 w-10 text-cyan-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-slate-600 mt-4">กำลังประมวลผล...</p>
+            </div>
+            <div id="result-content" class="hidden w-full">
+                <h2 class="text-xl font-medium text-slate-700 mb-4">ผลการประเมินเบื้องต้น</h2>
+                
+                <div class="bg-cyan-50 border-2 border-cyan-200 rounded-xl p-4 mb-4">
+                    <p class="text-sm text-cyan-800">จำนวนครั้งที่ต้องมาพบแพทย์โดยประมาณ</p>
+                    <p class="text-5xl font-bold text-cyan-600 my-2" id="estimated-duration">_</p>
+                </div>
+
+                <div id="special-alert-container" class="hidden text-left bg-red-100 border border-red-300 p-4 rounded-xl mb-4">
+                     <h3 class="font-bold text-red-800 mb-2 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.636-1.214 2.43-1.214 3.066 0l5.828 11.126c.63 1.202-.28 2.775-1.66 2.775H4.089c-1.38 0-2.29-1.573-1.66-2.775L8.257 3.099zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                        ข้อควรพิจารณาพิเศษ
+                    </h3>
+                    <ul id="special-alert-list" class="list-disc list-inside text-sm text-red-700 space-y-1"></ul>
+                </div>
+
+                <div id="recommendations-container" class="hidden text-left bg-sky-50 border border-sky-200 p-4 rounded-xl mb-4">
+                    <h3 class="font-bold text-sky-800 mb-2 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" /></svg>
+                        คำแนะนำเพิ่มเติม
+                    </h3>
+                    <ul id="recommendations-list" class="list-disc list-inside text-sm text-sky-700 space-y-1"></ul>
+                </div>
+
+                <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-lg my-6 text-left">
+                    <p class="font-bold">ย้ำอีกครั้ง!</p>
+                    <p class="text-sm">นี่เป็นเพียงการคาดการณ์จากข้อมูลที่คุณให้มาเท่านั้น ระยะเวลาจริงอาจเปลี่ยนแปลงได้ตามการวินิจฉัยของทันตแพทย์</p>
+                </div>
+
+                <button onclick="window.open('https://liff.line.me/2007668589-YgkQmRZj', '_blank')" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors duration-300 shadow-md mb-3 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M16.22,10.32,14.6,12.5a.76.76,0,0,1-1.25-.05q-1.4-2.1-2.8-4.22a.86.86,0,0,1-.18-.64,3.47,3.47,0,0,1,.44-1.5,4,4,0,0,1,1.23-1.23,3.47,3.47,0,0,1,1.5-.44.86.86,0,0,1,.64.18q2.12,1.4,4.22,2.8a.76.76,0,0,1,.05,1.25ZM11.48,14.47a3.3,3.3,0,0,1-2.12.83,3.2,3.2,0,0,1-2.37-1,3.3,3.3,0,0,1-1-2.37,3.2,3.2,0,0,1,1-2.37,3.3,3.3,0,0,1,2.37-1A3.2,3.2,0,0,1,11.7,9.75V12A2.52,2.52,0,0,0,9.22,14.5a2.52,2.52,0,0,0,2.5-2.52H9.22a.76.76,0,0,1,0-1.52h4a.76.76,0,0,1,.76.76A3.29,3.29,0,0,1,11.48,14.47ZM12,0A12,12,0,1,0,24,12,12,12,0,0,0,12,0Z"/></svg>
+                    นัดปรึกษาคุณหมอทาง LINE
+                </button>
+                <button onclick="restartQuiz()" class="w-full bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors duration-300">
+                    ประเมินใหม่
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA & STATE MANAGEMENT ---
+        const mainQuestions = [
+            {
+                id: 'age', text: 'ช่วงอายุของคุณคือ?', subtitle: '', type: 'radio',
+                options: [
+                    { label: 'ไม่เกิน 25 ปี', value: 'under_25' },
+                    { label: '25 - 35 ปี', value: '25_35' },
+                    { label: 'มากกว่า 35 ปี', value: 'over_35', modifier: 6 },
+                ]
+            },
+            {
+                id: 'problem', text: 'ปัญหาหลักที่กังวลคืออะไร?', subtitle: '(เลือกได้มากกว่า 1 ข้อ)', type: 'checkbox',
+                options: [
+                    {
+                        label: 'ฟันซ้อนเก', value: 'crowding', min: 24, max: 36,
+                        followUp: {
+                            id: 'crowding_severity', text: 'ความรุนแรงของฟันซ้อนเก?', type: 'radio',
+                            options: [
+                                { label: 'มาก', value: 'severe', modifier: 0 },
+                                { label: 'น้อย', value: 'mild', modifier: -6 }
+                            ]
+                        }
+                    },
+                    {
+                        label: 'ฟันห่าง', value: 'spacing', min: 16, max: 30,
+                        followUp: {
+                            id: 'spacing_severity', text: 'ความรุนแรงของฟันห่าง?', type: 'radio',
+                            options: [
+                                { label: 'น้อย', value: 'mild', modifier: 0 },
+                                { label: 'มาก', value: 'severe', modifier: 6 }
+                            ]
+                        }
+                    },
+                    {
+                        label: 'ฟันยื่น', value: 'protrusion', min: 30, max: 42,
+                        followUp: {
+                            id: 'protrusion_severity', text: 'ความรุนแรงของฟันยื่น?', type: 'radio',
+                            options: [
+                                { label: 'น้อย', value: 'mild', modifier: 0 },
+                                { label: 'มาก', value: 'severe', modifier: 6, note: 'กรณีฟันยื่นระดับมาก: อาจต้องใช้สกรู (หมุดจัดฟัน) ร่วมด้วยอย่างน้อย 2 ตัว' }
+                            ]
+                        }
+                    },
+                    {
+                        label: 'ฟันล่างสบคร่อมฟันบน', value: 'crossbite',
+                        followUp: {
+                            id: 'crossbite_type', text: 'ฟันล่างสบคร่อมบริเวณใด?', type: 'radio',
+                            options: [
+                                { label: 'คร่อมเฉพาะฟันหน้า', value: 'anterior', min: 30, max: 48, note: 'กรณีฟันล่างสบคร่อมฟันหน้า: อาจมีอุปกรณ์เสริมหรือสกรู (หมุดจัดฟัน) ช่วยแก้ฟันสบคร่อมร่วมด้วย' },
+                                { label: 'คร่อมทั้งฟันหน้าและฟันหลัง', value: 'full', min: 36, max: 54, note: 'กรณีฟันล่างสบคร่อมทั้งปาก: ต้องมีอุปกรณ์เสริมหรือสกรู (หมุดจัดฟัน) ช่วยแก้ฟันสบคร่อมร่วมด้วย' }
+                            ]
+                        }
+                    },
+                    {
+                        label: 'ถอนฟันอยากปิดช่องว่าง', value: 'extraction_closure',
+                        followUp: {
+                            id: 'extraction_location', text: 'ต้องการปิดช่องว่างบริเวณใด?', type: 'radio',
+                            options: [
+                                { label: 'ฟันหน้า', value: 'anterior', min: 0, max: 0, alert: 'โดยทั่วไปฟันหน้าไม่สามารถจัดฟันเพื่อปิดช่องว่างได้ โปรดปรึกษาทันตแพทย์เพื่อทางเลือกอื่น' },
+                                { label: 'ฟันหลัง', value: 'posterior', min: 36, max: 48, note: 'กรณีปิดช่องว่างฟันหลัง: อาจต้องใช้สกรู (หมุดจัดฟัน) ร่วมด้วย' }
+                            ]
+                        }
+                    },
+                    { label: 'แกนฟันเบี้ยว / หน้าเบี้ยว', value: 'asymmetry', min: 36, max: 48, note: 'กรณีแกนฟันเบี้ยว: อาจต้องใช้สกรู (หมุดจัดฟัน) ร่วมด้วย' }
+                ]
+            },
+            {
+                id: 'extraction_plan', text: 'แผนการรักษามีการถอนฟันร่วมด้วยหรือไม่?', subtitle: '', type: 'radio',
+                options: [
+                    { label: 'ไม่มีถอนฟัน', value: 'no' },
+                    { label: 'มีถอนฟันด้วย', value: 'yes', min: 30, max: 42 },
+                    { label: 'อาจจะต้องถอน / ไม่แน่ใจ', value: 'maybe' },
+                ]
+            },
+            {
+                id: 'appliance_type', text: 'ต้องการจัดฟันแบบใด?', subtitle: '', type: 'radio',
+                options: [
+                    { label: 'จัดฟันชนิดโลหะธรรมดา', value: 'conventional' },
+                    { label: 'จัดฟันชนิดโลหะที่ไม่ต้องใช้ยางรัด', value: 'self_ligating', modifier: -6 },
+                ]
+            }
+        ];
+
+        let state = {};
+
+        // --- DOM ELEMENTS ---
+        const screens = { welcome: document.getElementById('welcome-screen'), question: document.getElementById('question-screen'), results: document.getElementById('results-screen') };
+        const questionText = document.getElementById('question-text');
+        const questionSubtitle = document.getElementById('question-subtitle');
+        const answerOptionsContainer = document.getElementById('answer-options');
+        const progressBar = document.getElementById('progress-indicator');
+        const nextButton = document.getElementById('next-button');
+        const backButton = document.getElementById('back-button');
+
+        // --- CORE LOGIC ---
+        function resetState() {
+            state = {
+                currentMainQuestionIndex: 0,
+                followUpQueue: [],
+                userAnswers: {},
+                history: []
+            };
+        }
+
+        function showScreen(screenId) {
+            Object.values(screens).forEach(screen => screen.classList.remove('active-screen'));
+            screens[screenId].classList.add('active-screen');
+        }
+
+        function startQuiz() {
+            resetState();
+            showScreen('question');
+            processNextQuestion();
+        }
+
+        function restartQuiz() {
+            showScreen('welcome');
+            const resultUI = ['result-content', 'recommendations-container', 'special-alert-container'];
+            resultUI.forEach(id => document.getElementById(id).classList.add('hidden'));
+            document.getElementById('loading-spinner').style.display = 'flex';
+        }
+        
+        function goBack() {
+            if (state.history.length > 0) {
+                state = state.history.pop();
+                renderCurrentQuestion();
+            } else {
+                restartQuiz();
+            }
+        }
+
+        function saveHistory() {
+            state.history.push(JSON.parse(JSON.stringify(state)));
+        }
+
+        function renderCurrentQuestion() {
+            let q;
+            if (state.followUpQueue.length > 0) {
+                q = state.followUpQueue[0];
+            } else {
+                q = mainQuestions[state.currentMainQuestionIndex];
+            }
+            
+            backButton.style.display = state.history.length === 0 ? 'none' : 'block';
+
+            const progressPercentage = (state.currentMainQuestionIndex / mainQuestions.length) * 100;
+            progressBar.style.width = `${progressPercentage}%`;
+
+            questionText.textContent = q.text;
+            questionSubtitle.textContent = q.subtitle || '';
+            answerOptionsContainer.innerHTML = '';
+            nextButton.classList.add('hidden');
+
+            const questionType = q.type;
+            if (questionType === 'checkbox') {
+                nextButton.classList.remove('hidden');
+                q.options.forEach(option => {
+                    const optionElement = document.createElement('div');
+                    optionElement.className = 'option-card border-2 border-slate-200 rounded-lg p-4 flex items-center justify-between';
+                    optionElement.innerHTML = `<span>${option.label}</span><div class="w-6 h-6 border-2 border-slate-300 rounded-md flex-shrink-0"></div>`;
+                    optionElement.onclick = () => {
+                        optionElement.classList.toggle('selected');
+                        const checkmark = optionElement.querySelector('.w-6.h-6');
+                        checkmark.innerHTML = optionElement.classList.contains('selected') ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 text-cyan-600"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z" clip-rule="evenodd" /></svg>` : '';
+                    };
+                    answerOptionsContainer.appendChild(optionElement);
+                });
+            } else { // radio
+                q.options.forEach(option => {
+                    const optionElement = document.createElement('button');
+                    optionElement.className = 'w-full text-left bg-slate-100 p-4 rounded-lg hover:bg-cyan-100 transition-colors duration-200 border border-slate-200';
+                    optionElement.textContent = option.label;
+                    optionElement.onclick = () => selectAnswer(q.id, option);
+                    answerOptionsContainer.appendChild(optionElement);
+                });
+            }
+        }
+
+        function processNextQuestion() {
+            if (state.followUpQueue.length > 0) {
+                renderCurrentQuestion();
+            } else if (state.currentMainQuestionIndex < mainQuestions.length) {
+                renderCurrentQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function selectAnswer(questionId, option) {
+            saveHistory();
+            state.userAnswers[questionId] = option;
+            
+            if (state.followUpQueue.length > 0) {
+                state.followUpQueue.shift(); // remove completed follow-up
+            } else {
+                state.currentMainQuestionIndex++;
+            }
+            setTimeout(processNextQuestion, 200);
+        }
+
+        function submitCheckboxAnswer() {
+            saveHistory();
+            const q = mainQuestions[state.currentMainQuestionIndex];
+            const selectedOptions = [];
+            answerOptionsContainer.querySelectorAll('.option-card.selected').forEach(el => {
+                const label = el.querySelector('span').textContent;
+                const fullOption = q.options.find(opt => opt.label === label);
+                selectedOptions.push(fullOption);
+                if (fullOption.followUp) {
+                    state.followUpQueue.push(fullOption.followUp);
+                }
+            });
+            
+            if (selectedOptions.length === 0) {
+                alert("กรุณาเลือกอย่างน้อย 1 ข้อ");
+                state.history.pop(); // Don't save history if no selection
+                return;
+            }
+
+            state.userAnswers[q.id] = selectedOptions;
+            state.currentMainQuestionIndex++;
+            processNextQuestion();
+        }
+
+        function showResults() {
+            showScreen('results');
+            setTimeout(() => {
+                const result = calculateDuration();
+                document.getElementById('estimated-duration').textContent = result.durationString;
+                
+                const recList = document.getElementById('recommendations-list');
+                const recContainer = document.getElementById('recommendations-container');
+                recList.innerHTML = '';
+                if (result.notes.length > 0) {
+                    result.notes.forEach(note => recList.innerHTML += `<li>${note}</li>`);
+                    recContainer.classList.remove('hidden');
+                } else {
+                     recContainer.classList.add('hidden');
+                }
+
+                const alertList = document.getElementById('special-alert-list');
+                const alertContainer = document.getElementById('special-alert-container');
+                alertList.innerHTML = '';
+                if (result.alerts.length > 0) {
+                    result.alerts.forEach(alert => alertList.innerHTML += `<li>${alert}</li>`);
+                    alertContainer.classList.remove('hidden');
+                } else {
+                    alertContainer.classList.add('hidden');
+                }
+
+                document.getElementById('loading-spinner').style.display = 'none';
+                document.getElementById('result-content').classList.remove('hidden');
+            }, 1500);
+        }
+
+        function calculateDuration() {
+            let minVisits = 0;
+            let maxVisits = 0;
+            const notes = new Set();
+            const alerts = new Set();
+
+            // 1. Base duration from problems
+            const problemAnswers = state.userAnswers.problem || [];
+            problemAnswers.forEach(prob => {
+                let currentMin = prob.min;
+                let currentMax = prob.max;
+
+                if (prob.followUp) {
+                    const followUpAnswer = state.userAnswers[prob.followUp.id];
+                    if (followUpAnswer) {
+                        if (followUpAnswer.modifier !== undefined) { // e.g. crowding, spacing
+                            currentMin += followUpAnswer.modifier;
+                            currentMax += followUpAnswer.modifier;
+                        } else { // e.g. crossbite, extraction
+                            currentMin = followUpAnswer.min;
+                            currentMax = followUpAnswer.max;
+                        }
+                        if (followUpAnswer.note) notes.add(followUpAnswer.note);
+                        if (followUpAnswer.alert) alerts.add(followUpAnswer.alert);
+                    }
+                }
+                if (prob.note) notes.add(prob.note);
+
+                if (currentMax > maxVisits) {
+                    maxVisits = currentMax;
+                    minVisits = currentMin;
+                }
+            });
+
+            // 2. Consider extraction plan as another base
+            const extractionPlan = state.userAnswers.extraction_plan;
+            if (extractionPlan && extractionPlan.value === 'yes') {
+                if (extractionPlan.max > maxVisits) {
+                    maxVisits = extractionPlan.max;
+                    minVisits = extractionPlan.min;
+                }
+            }
+
+            // 3. Apply modifiers
+            const ageMod = state.userAnswers.age?.modifier || 0;
+            const applianceMod = state.userAnswers.appliance_type?.modifier || 0;
+            minVisits += ageMod + applianceMod;
+            maxVisits += ageMod + applianceMod;
+            
+            // 4. Final adjustments
+            if (minVisits < 12 && maxVisits > 0) minVisits = 12;
+            if (maxVisits < minVisits) maxVisits = minVisits + 6;
+            if (maxVisits === 0 && minVisits === 0 && alerts.size > 0) {
+                 return { durationString: "ปรึกษาแพทย์", notes: Array.from(notes), alerts: Array.from(alerts) };
+            }
+
+            return {
+                durationString: `${minVisits} - ${maxVisits} ครั้ง`,
+                notes: Array.from(notes),
+                alerts: Array.from(alerts)
+            };
+        }
+
+        // Initial call
+        resetState();
+        showScreen('welcome');
+
+    </script>
+</body>
+</html>
