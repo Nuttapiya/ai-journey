@@ -455,35 +455,42 @@
             const result = calculateDuration();
             const { durationString, notes, alerts } = result;
 
-            let messageText = `สรุปผลประเมิน Smile Journey:\n\n`;
-            messageText += `จำนวนครั้งโดยประมาณ: ${durationString}\n\n`;
+            let summaryMessage = `สรุปผลประเมิน Smile Journey:\n\n`;
+            summaryMessage += `จำนวนครั้งโดยประมาณ: ${durationString}\n\n`;
 
             if (notes.length > 0) {
-                messageText += "คำแนะนำเพิ่มเติม:\n";
-                notes.forEach(note => { messageText += `• ${note}\n`; });
-                messageText += "\n";
+                summaryMessage += "คำแนะนำเพิ่มเติม:\n";
+                notes.forEach(note => { summaryMessage += `• ${note}\n`; });
+                summaryMessage += "\n";
             }
 
             if (alerts.length > 0) {
-                messageText += "ข้อควรพิจารณาพิเศษ:\n";
-                alerts.forEach(alert => { messageText += `• ${alert}\n`; });
-                messageText += "\n";
+                summaryMessage += "ข้อควรพิจารณาพิเศษ:\n";
+                alerts.forEach(alert => { summaryMessage += `• ${alert}\n`; });
+                summaryMessage += "\n";
             }
             
-            messageText += "รบกวนเจ้าหน้าที่ช่วยดูผลและให้คำแนะนำเพิ่มเติมด้วยค่ะ/ครับ";
+            summaryMessage += "รบกวนเจ้าหน้าที่ช่วยดูผลและให้คำแนะนำเพิ่มเติมด้วยค่ะ/ครับ";
+
+            const messagesToSend = [
+                { type: 'text', text: summaryMessage },
+                { type: 'text', text: 'เลือกสาขาที่จะทำการสอบถามเพิ่มเติม' }
+            ];
 
             try {
                 await liff.init({ liffId: liffId });
                 if (liff.isInClient()) {
-                    await liff.sendMessages([{ type: 'text', text: messageText }]);
+                    await liff.sendMessages(messagesToSend);
                     const successMsg = document.getElementById('liff-success-message');
                     successMsg.classList.remove('hidden');
                     setTimeout(() => { successMsg.classList.add('hidden'); }, 4000);
                 } else {
+                    // Fallback for non-LINE environment
                     window.open(`https://liff.line.me/${liffId}`, '_blank');
                 }
             } catch (error) {
                 console.error('LIFF Error:', error);
+                alert('เกิดข้อผิดพลาดในการเชื่อมต่อกับ LINE');
                 window.open(`https://liff.line.me/${liffId}`, '_blank');
             }
         }
